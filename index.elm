@@ -3,7 +3,10 @@ import Html.App as App
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, onCheck)
 import String
+import Http
 import Random
+import Json.Decode as Json
+import Task
 
 main : Program Never
 main = App.program
@@ -23,6 +26,7 @@ type alias Model =
   , passwordAgain : String
   , isRevealed : Bool
   , dieFace : Int
+  , url : String
   }
 
 -- Update
@@ -38,6 +42,10 @@ type Msg
   | Reveal Bool
   | Roll
   | NewFace Int
+  | UpdateUrl String
+  | SendRequest
+  | FetchFail Http.Error
+  | FetchSucceed String
 
 update: Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -70,7 +78,19 @@ update msg model =
       (model, Random.generate NewFace (Random.int 1 6))
 
     NewFace newFace ->
-      ({model | dieFace = newFace }, Cmd.none)
+      ({ model | dieFace = newFace }, Cmd.none)
+
+    UpdateUrl newUrl ->
+      ({ model | url = newUrl }, Cmd.none)
+    
+    SendRequest ->
+      (model, fetchData model.url)
+
+    FetchFail _ ->
+      (model, Cmd.none)
+
+    FetchSucceed _ ->
+      (model, Cmd.none)
 
 -- View
 
@@ -82,6 +102,7 @@ view model =
     , viewLoginPassword model
     , viewValidation model
     , viewDice model
+    , viewHttpReq model
     ]
 
 
@@ -132,7 +153,15 @@ viewDice model =
     , button [ onClick Roll ] [ text "Roll!"]
     ]
 
--- -- SUBSCRIPTIONS
+viewHttpReq : Model -> Html Msg
+viewHttpReq model =
+  div []
+    [ input [ onInput UpdateUrl, value model.url ] []
+    , text (toString model.url)
+    , button [ onClick SendRequest ] [ text "Go!" ]
+    ]
+
+-- SUBSCRIPTIONS
 
 subscriptions : Model -> Sub Msg
 subscriptions model = 
@@ -142,4 +171,13 @@ subscriptions model =
 
 init : (Model, Cmd Msg)
 init =
-  (Model "xxx" 0 "" "" "" False 1, Cmd.none)
+  (Model "xxx" 0 "" "" "" False 1 "http://localhost/", Cmd.none)
+
+-- HTTP
+fetchData : String -> Cmd Msg
+fetchData url =
+  Task.perform FetchFail FetchSucceed (Http.get decodeGifUrl url)
+
+decodeGifUrl : Json.Decoder String
+decodeGifUrl =
+  Json.at ["data", "image_url"] Json.string
