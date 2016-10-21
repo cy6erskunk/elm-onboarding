@@ -24,16 +24,6 @@ type alias Model =
   , isRevealed : Bool
   , dieFace : Int
   }
-model: Model
-model =
-  { counter = 0
-  , content = "" 
-  , name = ""
-  , password = ""
-  , passwordAgain = ""
-  , isRevealed = False
-  , dieFace = 1
-  }
 
 -- Update
 
@@ -152,4 +142,4 @@ subscriptions model =
 
 init : (Model, Cmd Msg)
 init =
-  (model, Cmd.none)
+  (Model "xxx" 0 "" "" "" False 1, Cmd.none)
