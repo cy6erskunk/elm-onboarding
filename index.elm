@@ -33,16 +33,10 @@ type alias Model =
 -- Update
 
 type Msg
-  = Increment
-  | Decrement
-  | Reset
-  | Change String
-  | Name String
+  = Name String
   | Password String
   | PasswordAgain String
   | Reveal Bool
-  | Roll
-  | NewFace Int
   | UpdateUrl String
   | SendRequest
   | FetchFail Http.Error
@@ -51,18 +45,6 @@ type Msg
 update: Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    Increment ->
-      ({ model | counter = model.counter + 1 }, Cmd.none)
-
-    Decrement ->
-      ({ model | counter = model.counter - 1 }, Cmd.none)
-
-    Reset ->
-      ({ model | counter = 0 }, Cmd.none)
-
-    Change newContent ->
-      ({ model | content = newContent }, Cmd.none)
-
     Name name ->
       ({ model | name = name }, Cmd.none)
 
@@ -74,12 +56,6 @@ update msg model =
 
     Reveal doReveal ->
       ({ model | isRevealed = doReveal }, Cmd.none)
-
-    Roll ->
-      (model, Random.generate NewFace (Random.int 1 6))
-
-    NewFace newFace ->
-      ({ model | dieFace = newFace }, Cmd.none)
 
     UpdateUrl newUrl ->
       ({ model | url = newUrl }, Cmd.none)
@@ -106,30 +82,10 @@ update msg model =
 view: Model -> Html Msg
 view model =
   div []
-    [ viewCounter model
-    , viewInputWithReverse model
-    , viewLoginPassword model
+    [ viewLoginPassword model
     , viewValidation model
-    , viewDice model
     , viewHttpReq model
     ]
-
-
-viewCounter: Model -> Html Msg
-viewCounter model =
-  div []
-      [ button [ onClick Reset ] [ text "reset" ]
-      , div [] [ text (toString model.counter) ]
-      , button [ onClick Decrement ] [ text "-" ]
-      , button [ onClick Increment ] [ text "+" ]
-      ]
-
-viewInputWithReverse: Model -> Html Msg
-viewInputWithReverse model =
-  div []
-      [ input [ placeholder "Enter text to reverse", onInput Change ] []
-      , div [] [ text (String.reverse model.content) ]
-      ]
 
 viewLoginPassword: Model -> Html Msg
 viewLoginPassword model =
@@ -154,13 +110,6 @@ viewValidation model =
         ("red", "Are you a terrorist or what?")
   in
     div [ style [("color", color)] ] [ text message ]
-
-viewDice : Model -> Html Msg
-viewDice model =
-  div []
-    [ h1 [] [ text (toString model.dieFace) ]
-    , button [ onClick Roll ] [ text "Roll!"]
-    ]
 
 viewHttpReq : Model -> Html Msg
 viewHttpReq model =
