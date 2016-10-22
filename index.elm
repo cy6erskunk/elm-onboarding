@@ -27,11 +27,12 @@ type alias Model =
   , isRevealed : Bool
   , dieFace : Int
   , url : String
+  , reqError : String
   }
 
 -- Update
 
-type Msg 
+type Msg
   = Increment
   | Decrement
   | Reset
@@ -67,7 +68,7 @@ update msg model =
 
     Password password ->
       ({ model | password = password }, Cmd.none)
-    
+
     PasswordAgain password ->
       ({ model | passwordAgain = password }, Cmd.none)
 
@@ -82,12 +83,20 @@ update msg model =
 
     UpdateUrl newUrl ->
       ({ model | url = newUrl }, Cmd.none)
-    
+
     SendRequest ->
       (model, fetchData model.url)
 
-    FetchFail _ ->
-      (model, Cmd.none)
+    FetchFail error ->
+      case error of
+        Http.Timeout ->
+          ({ model | reqError = "Timeout happened :(" }, Cmd.none)
+        Http.NetworkError ->
+          ({ model | reqError = "NetworkError :'(" }, Cmd.none)
+        Http.UnexpectedPayload s ->
+          ({ model | reqError = "UnexpectedPayload: " ++ s }, Cmd.none)
+        Http.BadResponse code str ->
+          ({ model | reqError = (toString code) ++ str }, Cmd.none)
 
     FetchSucceed _ ->
       (model, Cmd.none)
@@ -112,7 +121,7 @@ viewCounter model =
       [ button [ onClick Reset ] [ text "reset" ]
       , div [] [ text (toString model.counter) ]
       , button [ onClick Decrement ] [ text "-" ]
-      , button [ onClick Increment ] [ text "+" ]  
+      , button [ onClick Increment ] [ text "+" ]
       ]
 
 viewInputWithReverse: Model -> Html Msg
@@ -159,25 +168,26 @@ viewHttpReq model =
     [ input [ onInput UpdateUrl, value model.url ] []
     , text (toString model.url)
     , button [ onClick SendRequest ] [ text "Go!" ]
+    , div [] [ text model.reqError ]
     ]
 
 -- SUBSCRIPTIONS
 
 subscriptions : Model -> Sub Msg
-subscriptions model = 
+subscriptions model =
   Sub.none
 
 -- INIT
 
 init : (Model, Cmd Msg)
 init =
-  (Model "xxx" 0 "" "" "" False 1 "http://localhost/", Cmd.none)
+  (Model "xxx" 0 "" "" "" False 1 "http://localhost/" "", Cmd.none)
 
 -- HTTP
 fetchData : String -> Cmd Msg
 fetchData url =
-  Task.perform FetchFail FetchSucceed (Http.get decodeGifUrl url)
+  Task.perform FetchFail FetchSucceed (Http.get decodeResponseJson url)
 
-decodeGifUrl : Json.Decoder String
-decodeGifUrl =
-  Json.at ["data", "image_url"] Json.string
+decodeResponseJson : Json.Decoder String
+decodeResponseJson =
+  Json.at [ "id", "name"] Json.string
