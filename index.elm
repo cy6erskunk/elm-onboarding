@@ -7,6 +7,9 @@ import Http
 import Random
 import Json.Decode as Json
 import Task
+import Svg exposing (..)
+import Svg.Attributes exposing (..)
+import Time exposing (Time, second)
 
 main : Program Never
 main = App.program
@@ -28,6 +31,7 @@ type alias Model =
   , dieFace : Int
   , url : String
   , reqError : String
+  , time : Time
   }
 
 -- Update
@@ -41,6 +45,7 @@ type Msg
   | SendRequest
   | FetchFail Http.Error
   | FetchSucceed String
+  | Tick Time
 
 update: Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -77,24 +82,46 @@ update msg model =
     FetchSucceed _ ->
       (model, Cmd.none)
 
+    Tick newTime ->
+      ({ model| time = newTime }, Cmd.none)
+
 -- View
 
 view: Model -> Html Msg
 view model =
   div []
-    [ viewLoginPassword model
+    [ viewClock model
+    , viewLoginPassword model
     , viewValidation model
     , viewHttpReq model
     ]
 
+
+viewClock : Model -> Html Msg
+viewClock model =
+  let
+    angle =
+      turns (Time.inMinutes model.time)
+
+    handX =
+      toString (50 + 40 * cos angle)
+
+    handY =
+      toString (50 + 40 * sin angle)
+  in
+    Svg.svg [ viewBox "0 0 100 100", Svg.Attributes.width "300px"]
+      [ circle [ cx "50", cy "50", r "45", fill "#0b79ce" ] []
+      , line [ x1 "50", y1 "50", x2 handX, y2 handY, stroke "#023963" ] []
+      ]
+
 viewLoginPassword: Model -> Html Msg
 viewLoginPassword model =
   div []
-      [ input [ type' "text", placeholder "Name", onInput Name ] []
-      , input [ type' (if model.isRevealed then "text" else "password"), placeholder "Password", onInput Password ] []
-      , input [ type' (if model.isRevealed then "text" else "password"), placeholder "Password Again", onInput PasswordAgain ] []
-      , input [ type' "checkbox", onCheck Reveal ] []
-      , text "reveal everything!"
+      [ input [ Html.Attributes.type' "text", placeholder "Name", onInput Name ] []
+      , input [ Html.Attributes.type' (if model.isRevealed then "text" else "password"), placeholder "Password", onInput Password ] []
+      , input [ Html.Attributes.type' (if model.isRevealed then "text" else "password"), placeholder "Password Again", onInput PasswordAgain ] []
+      , input [ Html.Attributes.type' "checkbox", onCheck Reveal ] []
+      , Html.text "reveal everything!"
       ]
 
 viewValidation : Model -> Html Msg
@@ -109,28 +136,28 @@ viewValidation model =
       else
         ("red", "Are you a terrorist or what?")
   in
-    div [ style [("color", color)] ] [ text message ]
+    div [ Html.Attributes.style [("color", color)] ] [ Html.text message ]
 
 viewHttpReq : Model -> Html Msg
 viewHttpReq model =
   div []
     [ input [ onInput UpdateUrl, value model.url ] []
-    , text (toString model.url)
-    , button [ onClick SendRequest ] [ text "Go!" ]
-    , div [] [ text model.reqError ]
+    , Html.text (toString model.url)
+    , button [ onClick SendRequest ] [ Html.text "Go!" ]
+    , div [] [ Html.text model.reqError ]
     ]
 
 -- SUBSCRIPTIONS
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Sub.none
+  Time.every second Tick
 
 -- INIT
 
 init : (Model, Cmd Msg)
 init =
-  (Model "xxx" 0 "" "" "" False 1 "http://localhost/" "", Cmd.none)
+  (Model "xxx" 0 "" "" "" False 1 "http://localhost/" "" 0, Cmd.none)
 
 -- HTTP
 fetchData : String -> Cmd Msg
