@@ -179,3 +179,17 @@ fetchData url =
 decodeResponseJson : Json.Decoder String
 decodeResponseJson =
   Json.at [ "href"] Json.string
+
+type alias Project = 
+  { name : String
+  , id : String
+  , href : String
+  , webUrl : String
+  , parentProjectId : Maybe String
+  , description : Maybe String
+  }
+type alias ProjectsResponse = 
+  { count : Int
+  , href : String
+  , project : List Project 
+  }
