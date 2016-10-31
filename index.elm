@@ -5,6 +5,7 @@ import Html.Events exposing (onClick, onInput, onCheck)
 import String
 import Http
 import Json.Decode as Json
+import Json.Decode exposing ((:=))
 import Task
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
@@ -29,7 +30,7 @@ type alias Model =
   , dieFace : Int
   , url : String
   , reqError : String
-  , someResponse : String
+  , someResponse : ProjectsResponse
   , time : Time
   , startTime : Time
   }
@@ -44,7 +45,7 @@ type Msg
   | UpdateUrl String
   | SendRequest
   | FetchFail Http.Error
-  | FetchSucceed String
+  | FetchSucceed ProjectsResponse
   | Tick Time
 
 update: Msg -> Model -> (Model, Cmd Msg)
@@ -149,7 +150,14 @@ viewHttpReq model =
     , Html.text (toString model.url)
     , button [ onClick SendRequest ] [ Html.text "Go!" ]
     , div [] [ Html.text model.reqError ]
-    , div [] [ Html.text model.someResponse ]
+    , div [] [ Html.text (toString model.someResponse.count) ]
+    , if (List.length model.someResponse.project) > 0 
+      then Html.ul [] <| List.map (\p -> 
+          Html.li [] [
+            Html.a [Html.Attributes.target "_blank", href p.href] [Html.text p.name]
+          ]
+        ) model.someResponse.project
+      else Html.text "no projects ;("
     ]
 
 -- SUBSCRIPTIONS
@@ -162,7 +170,7 @@ subscriptions model =
 
 init : (Model, Cmd Msg)
 init =
-  (Model 0 "" "" "" False 1 "http://localhost/" "" "" 0 0, Cmd.none)
+  (Model 0 "" "" "" False 1 "http://localhost/" "" emptyProjectsResponse 0 0, Cmd.none)
 
 -- HTTP
 fetchData : String -> Cmd Msg
@@ -178,20 +186,44 @@ fetchData url =
   |> Http.fromJson decodeResponseJson
   |> Task.perform FetchFail FetchSucceed
 
-decodeResponseJson : Json.Decoder String
+decodeResponseJson : Json.Decoder ProjectsResponse
 decodeResponseJson =
-  Json.at [ "href"] Json.string
+  Json.Decode.object3 ProjectsResponse
+    ("count" := Json.Decode.int) 
+    ("href" := Json.Decode.string)
+    ("project" := decodeProjectsList 
+    )
+
+decodeProjectsList : Json.Decoder (List Project)
+decodeProjectsList =
+  Json.Decode.object7 Project
+    ("name" := Json.Decode.string)
+    ("id"  := Json.Decode.string)
+    ("href"  := Json.Decode.string)
+    ("webUrl"  := Json.Decode.string)
+    (Json.Decode.oneOf ["parentProjectId"  := Json.Decode.string, Json.Decode.succeed ""])
+    (Json.Decode.oneOf ["description"  := Json.Decode.string, Json.Decode.succeed ""])
+    (Json.Decode.oneOf ["archived"  := Json.Decode.bool, Json.Decode.succeed False])
+  |> Json.Decode.list
 
 type alias Project = 
   { name : String
   , id : String
   , href : String
   , webUrl : String
-  , parentProjectId : Maybe String
-  , description : Maybe String
+  , parentProjectId : String
+  , description : String
+  , archived : Bool
   }
 type alias ProjectsResponse = 
   { count : Int
   , href : String
   , project : List Project 
   }
+
+emptyProjectsResponse : ProjectsResponse
+emptyProjectsResponse =
+    { count = 0
+    , href = ""
+    , project = []
+    }
