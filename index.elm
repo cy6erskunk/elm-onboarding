@@ -169,12 +169,14 @@ fetchData : String -> Cmd Msg
 fetchData url =
 -- Http.send : Settings -> Request -> Task RawError Response
 -- fromJson : Decoder a -> Task RawError Response -> Task Error a
-  Task.perform FetchFail FetchSucceed <| Http.fromJson decodeResponseJson <| Http.send Http.defaultSettings {
+  Http.send Http.defaultSettings {
     verb = "GET"
   , headers = [("Accept", "application/json")]
   , url = url
   , body = Http.empty
   }
+  |> Http.fromJson decodeResponseJson
+  |> Task.perform FetchFail FetchSucceed
 
 decodeResponseJson : Json.Decoder String
 decodeResponseJson =
